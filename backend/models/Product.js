@@ -1,57 +1,103 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/db');
+const mongoose = require('mongoose');
 
-const Product = sequelize.define('Product', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
+const reviewSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: 'User',
+    },
+    name: {
+      type: String,
+      required: true,
+    },
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+    },
+    comment: {
+      type: String,
+      required: true,
+    },
   },
-  title: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  description: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-  },
-  category: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  price: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-  },
-  image: {
-    type: DataTypes.STRING,
-    defaultValue: '',
-  },
-  stock: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0,
-  },
-  rating: {
-    type: DataTypes.FLOAT,
-    defaultValue: 0,
-  },
-  numReviews: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0,
-  },
-isNewArrival: {
-  type: DataTypes.INTEGER,
-  defaultValue: true
-},
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform: (doc, ret) => {
+        ret.id = ret._id;
+        delete ret.__v;
+        return ret;
+      },
+    },
+  }
+);
 
-discount: {
-  type: DataTypes.BOOLEAN,
-  defaultValue: 0
-}
+const productSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, 'Title is required'],
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: [true, 'Description is required'],
+    },
+    category: {
+      type: String,
+      required: [true, 'Category is required'],
+    },
+    price: {
+      type: Number,
+      required: [true, 'Price is required'],
+      default: 0,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    image: {
+      type: String,
+      default: '',
+    },
+    stock: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    rating: {
+      type: Number,
+      default: 0,
+    },
+    numReviews: {
+      type: Number,
+      default: 0,
+    },
+    isNewArrival: {
+      type: Boolean,
+      default: true,
+    },
+    reviews: [reviewSchema],
+  },
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform: (doc, ret) => {
+        ret.id = ret._id;
+        delete ret.__v;
+        return ret;
+      },
+    },
+  }
+);
 
-
-}, {
-  timestamps: true,
-});
+const Product = mongoose.model('Product', productSchema);
 
 module.exports = Product;

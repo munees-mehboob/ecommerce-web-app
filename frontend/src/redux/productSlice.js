@@ -1,29 +1,19 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-const BASE_URL = 'http://localhost:5000/api/products';
+import api from '../utils/api';
 
 // --- THUNKS ---
 
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
-  async ({ category = '', sort = '', search = '', filter = '', page = 1 } = {}, { getState, rejectWithValue }) => {
+  async ({ category = '', sort = '', search = '', filter = '', page = 1 } = {}, { rejectWithValue }) => {
     try {
-      // Pull token from auth slice
-      const { auth: { userInfo } } = getState();
-      const config = {
-        headers: {
-          Authorization: `Bearer ${userInfo?.token}`,
-        },
-      };
-
       const params = new URLSearchParams({ page, limit: 8 });
       if (category) params.append('category', category);
       if (sort) params.append('sort', sort);
       if (search) params.append('search', search);
       if (filter) params.append('filter', filter);
 
-      const { data } = await axios.get(`${BASE_URL}?${params.toString()}`, config);
+      const { data } = await api.get(`/products?${params.toString()}`);
       return data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch products');
@@ -33,15 +23,9 @@ export const fetchProducts = createAsyncThunk(
 
 export const fetchProductById = createAsyncThunk(
   'products/fetchProductById',
-  async (id, { getState, rejectWithValue }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      const { auth: { userInfo } } = getState();
-      const config = {
-        headers: {
-          Authorization: `Bearer ${userInfo?.token}`,
-        },
-      };
-      const { data } = await axios.get(`${BASE_URL}/${id}`, config);
+      const { data } = await api.get(`/products/${id}`);
       return data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch product');
@@ -51,16 +35,9 @@ export const fetchProductById = createAsyncThunk(
 
 export const createProductReview = createAsyncThunk(
   'products/createReview',
-  async ({ id, reviewData }, { getState, rejectWithValue }) => {
+  async ({ id, reviewData }, { rejectWithValue }) => {
     try {
-      const { auth: { userInfo } } = getState(); 
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${userInfo.token}`,
-        },
-      };
-      const { data } = await axios.post(`${BASE_URL}/${id}/reviews`, reviewData, config);
+      const { data } = await api.post(`/products/${id}/reviews`, reviewData);
       return data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to submit review');
@@ -68,16 +45,11 @@ export const createProductReview = createAsyncThunk(
   }
 );
 
-
 export const deleteProductReview = createAsyncThunk(
   'products/deleteReview',
-  async ({ productId, reviewId }, { getState, rejectWithValue }) => {
+  async ({ productId, reviewId }, { rejectWithValue }) => {
     try {
-      const { auth: { userInfo } } = getState();
-      const config = { 
-        headers: { Authorization: `Bearer ${userInfo.token}` } 
-      };
-      await axios.delete(`${BASE_URL}/${productId}/reviews/${reviewId}`, config);
+      await api.delete(`/products/${productId}/reviews/${reviewId}`);
       return reviewId;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to delete review');
@@ -94,15 +66,17 @@ const productSlice = createSlice({
     loading: false,
     error: null,
     selectedProduct: null,
+    selectedLoading: false,
+    selectedError: null,
     page: 1,
     totalPages: 1,
-    total: 0,
+    totalCount: 0,
     filters: { category: '', sort: '' },
   },
   reducers: {
     setFilters(state, action) {
       state.filters = { ...state.filters, ...action.payload };
-      state.page = 1; 
+      state.page = 1;
     },
     setPage(state, action) {
       state.page = action.payload;
@@ -119,22 +93,27 @@ const productSlice = createSlice({
         state.items = action.payload.products || action.payload || [];
         state.page = action.payload.page || 1;
         state.totalPages = action.payload.totalPages || 1;
-        state.total = action.payload.total || 0;
+        state.totalCount = action.payload.totalCount || 0;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(fetchProductById.pending, (state) => {
+        state.selectedLoading = true;
+        state.selectedError = null;
+      })
       .addCase(fetchProductById.fulfilled, (state, action) => {
+        state.selectedLoading = false;
         state.selectedProduct = action.payload;
+      })
+      .addCase(fetchProductById.rejected, (state, action) => {
+        state.selectedLoading = false;
+        state.selectedError = action.payload;
       });
   },
 });
 
-// --- EXPORTS ---
-
-// Named exports for your components (fixes the setFilters error)
 export const { setFilters, setPage } = productSlice.actions;
 
-// Default export for your store.js (fixes the default export error)
 export default productSlice.reducer;

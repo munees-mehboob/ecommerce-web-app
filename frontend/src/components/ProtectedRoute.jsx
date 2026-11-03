@@ -1,14 +1,31 @@
 import { useSelector } from 'react-redux';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 
 export const ProtectedRoute = ({ children }) => {
   const { userInfo } = useSelector((state) => state.auth);
-  return userInfo ? children : <Navigate to="/login" />;
+  const location = useLocation();
+
+  if (!userInfo) {
+    const redirectParam = location.pathname && location.pathname !== '/'
+      ? `?redirect=${encodeURIComponent(location.pathname + location.search)}`
+      : '';
+    return <Navigate to={`/login${redirectParam}`} replace />;
+  }
+
+  return children;
 };
 
 export const AdminRoute = ({ children }) => {
   const { userInfo } = useSelector((state) => state.auth);
-  if (!userInfo) return <Navigate to="/login" />;
-  if (!userInfo.isAdmin) return <Navigate to="/" />;
+  const location = useLocation();
+
+  if (!userInfo) {
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  }
+
+  if (!userInfo.isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 };

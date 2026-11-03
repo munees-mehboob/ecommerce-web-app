@@ -12,9 +12,7 @@ const protect = async (req, res, next) => {
     token = token.split(' ')[1];
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findByPk(decoded.id, {
-      attributes: { exclude: ['password'] }
-    });
+    req.user = await User.findById(decoded.id).select('-password');
 
     if (!req.user) {
       return res.status(401).json({ message: 'User not found' });
@@ -22,18 +20,16 @@ const protect = async (req, res, next) => {
 
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token invalid or expired' });
+    return res.status(401).json({ message: 'Token invalid or expired' });
   }
 };
 
 const adminOnly = (req, res, next) => {
-  // Use !! to convert the number 1 to true
-  if (req.user && (req.user.isAdmin === 1 || req.user.isAdmin === true)) {
+  if (req.user && (req.user.isAdmin === true || req.user.isAdmin === 1)) {
     next();
   } else {
     res.status(403).json({ message: 'Admin access only' });
   }
 };
-
 
 module.exports = { protect, adminOnly };

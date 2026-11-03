@@ -1,18 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../../redux/productSlice';
-import axios from 'axios';
+import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import Loader from '../../components/Loader';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const AdminProductsPage = () => {
   const dispatch = useDispatch();
   const { items: products, loading } = useSelector((state) => state.products);
-  const { userInfo } = useSelector((state) => state.auth);
 
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const [formData, setFormData] = useState({
     title: '',
@@ -92,13 +99,12 @@ const AdminProductsPage = () => {
     };
 
     try {
-      const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
       if (editMode) {
-        await axios.put(`http://localhost:5000/api/products/${editingId}`, submissionData, config);
-        toast.success('Product Updated! ✨');
+        await api.put(`/products/${editingId}`, submissionData);
+        toast.success('Product updated');
       } else {
-        await axios.post('http://localhost:5000/api/products', submissionData, config);
-        toast.success('Product Added! 🚀');
+        await api.post('/products', submissionData);
+        toast.success('Product added');
       }
       setShowForm(false);
       dispatch(fetchProducts());
@@ -107,26 +113,31 @@ const AdminProductsPage = () => {
     }
   };
 
-  const deleteHandler = async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-        await axios.delete(`http://localhost:5000/api/products/${id}`, config);
-        toast.success('Product deleted');
-        dispatch(fetchProducts());
-      } catch (err) {
-        toast.error('Failed to delete product');
-      }
-    }
+  const deleteHandler = (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Product',
+      message: 'Are you sure you want to permanently delete this product from your inventory?',
+      onConfirm: async () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
+        try {
+          await api.delete(`/products/${id}`);
+          toast.success('Product deleted successfully');
+          dispatch(fetchProducts());
+        } catch {
+          toast.error('Failed to delete product');
+        }
+      },
+    });
   };
 
   if (loading) return <Loader />;
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="admin-page-container">
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>Manage Products</h1>
         <button
           onClick={addClickHandler}
@@ -137,7 +148,7 @@ const AdminProductsPage = () => {
             cursor: 'pointer', fontWeight: '600', fontSize: '14px',
           }}
         >
-          {showForm && !editMode ? '✕ Cancel' : '+ Add New Product'}
+          {showForm && !editMode ? 'Cancel' : '+ Add New Product'}
         </button>
       </div>
 
@@ -155,7 +166,7 @@ const AdminProductsPage = () => {
           {/* Form Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>
-              {editMode ? `✏️ Editing Product #${editingId}` : '➕ Create New Product'}
+              {editMode ? `Editing Product #${editingId}` : 'Create New Product'}
             </h3>
             <button
               type="button"
@@ -167,7 +178,7 @@ const AdminProductsPage = () => {
                 fontWeight: '600', fontSize: '13px',
               }}
             >
-              ✕ Close
+              Close
             </button>
           </div>
 
@@ -185,7 +196,7 @@ const AdminProductsPage = () => {
           </div>
 
           {/* Price / Discount / Stock — 3 columns */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+          <div className="admin-form-3col">
             <div style={fieldStyle}>
               <label style={labelStyle}>Price (Rs.)</label>
               <input
@@ -314,16 +325,17 @@ const AdminProductsPage = () => {
               cursor: 'pointer', fontWeight: '700', fontSize: '15px',
             }}
           >
-            {editMode ? '💾 Update Product' : '🚀 Save New Product'}
+            {editMode ? 'Update Product' : 'Save New Product'}
           </button>
         </form>
       )}
 
       {/* ── PRODUCTS TABLE ── */}
       <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               {['ID', 'Image', 'Name', 'Price', 'Discount (%)', 'Stock', 'Category', 'Actions'].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '.5px' }}>
                   {h}
@@ -375,11 +387,10 @@ const AdminProductsPage = () => {
                       onBlur={async (e) => {
                         const newDiscount = Number(e.target.value);
                         try {
-                          const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-                          await axios.put(`http://localhost:5000/api/products/${product.id}`, { ...product, discount: newDiscount }, config);
-                          toast.success('Discount updated!');
+                          await api.put(`/products/${product.id || product._id}`, { ...product, discount: newDiscount });
+                          toast.success('Discount updated');
                           dispatch(fetchProducts());
-                        } catch (err) {
+                        } catch {
                           toast.error('Failed to update discount');
                         }
                       }}
@@ -439,8 +450,18 @@ const AdminProductsPage = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText="Yes, Delete"
+        confirmColor="#e11d48"
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

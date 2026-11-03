@@ -1,199 +1,321 @@
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAllOrders } from '../../redux/orderSlice'; 
-import axios from 'axios';
+import { fetchAllOrders } from '../../redux/orderSlice';
+import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import Loader from '../../components/Loader';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const AdminOrdersPage = () => {
   const dispatch = useDispatch();
-  const { orders = [], loading, error } = useSelector((state) => state.orders || {});
-  const { userInfo } = useSelector((state) => state.auth);
+  const { orders = [], loading } = useSelector((state) => state.orders || {});
+
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: '',
+    confirmColor: '#e94560',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     dispatch(fetchAllOrders());
   }, [dispatch]);
 
-  // Handler to mark order as delivered/shipped
-  const deliverHandler = async (id) => {
-    if (window.confirm('Mark this order as shipped?')) {
-      try {
-        const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-        await axios.put(`http://localhost:5000/api/orders/${id}/deliver`, {}, config);
-        toast.success('Order status updated! 📦');
-        dispatch(fetchAllOrders()); 
-      } catch (err) {
-        toast.error('Update failed');
-      }
-    }
+  const deliverHandler = (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Dispatch Order',
+      message: 'Confirm that this order has been packed and handed over to the courier?',
+      confirmText: 'Yes, Mark Delivered',
+      confirmColor: '#3b82f6',
+      onConfirm: async () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
+        try {
+          await api.put(`/orders/${id}/deliver`);
+          toast.success('Order status updated to Delivered');
+          dispatch(fetchAllOrders());
+        } catch {
+          toast.error('Delivery update failed');
+        }
+      },
+    });
   };
 
-  // Handler to mark order as paid
-  const payHandler = async (id) => {
-    if (window.confirm('Mark this order as paid?')) {
-      try {
-        const config = { headers: { Authorization: `Bearer ${userInfo.token}` } };
-        await axios.put(`http://localhost:5000/api/orders/${id}/pay`, {}, config);
-        toast.success('Payment recorded! 💰');
-        dispatch(fetchAllOrders()); 
-      } catch (err) {
-        toast.error(err.response?.data?.message || 'Payment update failed');
-      }
-    }
+  const payHandler = (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Record Payment',
+      message: 'Confirm that payment has been received in full for this order?',
+      confirmText: 'Yes, Confirm Payment',
+      confirmColor: '#10b981',
+      onConfirm: async () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
+        try {
+          await api.put(`/orders/${id}/pay`);
+          toast.success('Payment recorded successfully');
+          dispatch(fetchAllOrders());
+        } catch (err) {
+          toast.error(err.response?.data?.message || 'Payment update failed');
+        }
+      },
+    });
   };
 
   if (loading) return <Loader />;
 
+  const totalOrders = orders.length;
+  const paidOrders = orders.filter((o) => o.isPaid).length;
+  const deliveredOrders = orders.filter((o) => o.isDelivered).length;
+
   return (
-    <div className="container page">
-      <h1 className="section-title" style={{ marginBottom: '30px' }}>Order Management</h1>
-
-      <div style={styles.tableCard}>
-        <table style={styles.table}>
-          <thead>
-            <tr style={styles.theadRow}>
-              <th style={styles.th}>ID</th>
-              <th style={styles.th}>USER</th>
-              <th style={styles.th}>TOTAL</th>
-              <th style={styles.th}>PAYMENT</th>
-              <th style={styles.th}>DELIVERY</th>
-              <th style={styles.th}>ACTIONS</th>
-            </tr>
-          </thead>
-         <tbody>
-  {[...orders].reverse().map((order) => (
-    <tr key={order.id} style={styles.tr}>
-      <td style={{ ...styles.td, fontWeight: '700' }}>#{order.id}</td>
-      <td style={styles.td}>{order.User?.name || 'Guest'}</td>
-      
-      <td style={{ ...styles.td, fontWeight: '700', color: 'var(--primary)' }}>
-        Rs. {Number(order.totalPrice).toLocaleString('en-PK', { maximumFractionDigits: 0 })}
-      </td>
-
-      <td style={styles.td}>
-        {order.isPaid ? (
-          <div style={styles.statusGroup}>
-             <span style={styles.badgeSuccess}>Paid</span>
-             <small style={styles.dateLabel}>{order.paidAt?.substring(0, 10)}</small>
-          </div>
-        ) : (
-          <span style={styles.badgeDanger}>Unpaid</span>
-        )}
-      </td>
-
-    <td style={styles.td}>
-  <div style={styles.statusContainer}>
-    {order.isDelivered ? (
-      <>
-        <span style={styles.badgeSuccess}>Delivered</span>
-        <small style={styles.dateLabel}>{order.deliveredAt?.substring(0, 10)}</small>
-      </>
-    ) : (
-      <>
-        <span style={styles.badgePending}>Processing</span>
-        {/* This "ghost" label keeps the badge pushed up to the right spot */}
-        <small style={{ ...styles.dateLabel, visibility: 'hidden' }}>0000-00-00</small>
-      </>
-    )}
-  </div>
-</td>
-
-
-      <td style={styles.td}>
-        <div style={styles.actionCell}>
-          {/* Slot for Mark Paid */}
-          <div style={styles.buttonSlot}>
-            {!order.isPaid && (
-              <button onClick={() => payHandler(order.id)} style={styles.btnBlue}>
-                Mark Paid
-              </button>
-            )}
-          </div>
-
-          {/* Slot for Ship Order */}
-          <div style={styles.buttonSlot}>
-            {!order.isDelivered && (
-              <button onClick={() => deliverHandler(order.id)} style={styles.btnRed}>
-                Ship Order
-              </button>
-            )}
-          </div>
-        </div>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
-        </table>
+    <div className="admin-page-container">
+      {/* Page Header */}
+      <div style={{ marginBottom: '28px' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px' }}>
+          Orders & Fulfillment CRM
+        </h1>
+        <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
+          Manage payments, customer shipping details, and order dispatches.
+        </p>
       </div>
+
+      {/* Summary KPI Badges */}
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        <div style={styles.statPill}>
+          <span style={{ color: '#64748b', fontSize: '13px' }}>Total Orders:</span>
+          <strong style={{ color: '#0f172a', fontSize: '15px' }}>{totalOrders}</strong>
+        </div>
+        <div style={styles.statPill}>
+          <span style={{ color: '#166534', fontSize: '13px' }}>Paid:</span>
+          <strong style={{ color: '#166534', fontSize: '15px' }}>{paidOrders}</strong>
+        </div>
+        <div style={styles.statPill}>
+          <span style={{ color: '#991b1b', fontSize: '13px' }}>Unpaid:</span>
+          <strong style={{ color: '#991b1b', fontSize: '15px' }}>{totalOrders - paidOrders}</strong>
+        </div>
+        <div style={styles.statPill}>
+          <span style={{ color: '#1e40af', fontSize: '13px' }}>Delivered:</span>
+          <strong style={{ color: '#1e40af', fontSize: '15px' }}>{deliveredOrders}</strong>
+        </div>
+      </div>
+
+      {/* Orders Table Card */}
+      <div
+        style={{
+          background: '#ffffff',
+          borderRadius: '14px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={styles.th}>ORDER ID</th>
+                <th style={styles.th}>CUSTOMER</th>
+                <th style={styles.th}>DESTINATION</th>
+                <th style={styles.th}>TOTAL</th>
+                <th style={styles.th}>PAYMENT STATUS</th>
+                <th style={styles.th}>DELIVERY STATUS</th>
+                <th style={styles.th}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.length > 0 ? (
+                orders.map((order) => {
+                  const orderId = order.id || order._id;
+                  const customerName = order.user?.name || order.User?.name || 'Customer';
+                  const customerEmail = order.user?.email || '';
+
+                  return (
+                    <tr key={orderId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: '700', color: '#0f172a' }}>
+                        #{String(orderId).slice(-6).toUpperCase()}
+                      </td>
+
+                      <td style={styles.td}>
+                        <div style={{ fontWeight: '600', color: '#0f172a' }}>{customerName}</div>
+                        {customerEmail && <div style={{ fontSize: '12px', color: '#64748b' }}>{customerEmail}</div>}
+                      </td>
+
+                      <td style={styles.td}>
+                        <div style={{ fontSize: '13px', color: '#334155' }}>{order.shippingAddress}</div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                          {order.city}, {order.postalCode}
+                        </div>
+                        {order.phone && (
+                          <div style={{ fontSize: '12px', color: '#0284c7', fontWeight: '600', marginTop: '2px' }}>
+                            Phone: {order.phone}
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ ...styles.td, fontWeight: '800', color: '#e94560' }}>
+                        Rs. {Number(order.totalPrice || 0).toLocaleString()}
+                      </td>
+
+                      <td style={styles.td}>
+                        {order.isPaid ? (
+                          <div>
+                            <span style={styles.badgeSuccess}>Paid</span>
+                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                              {order.paymentMethod || 'Card'}
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <span style={styles.badgeDanger}>Unpaid</span>
+                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                              {order.paymentMethod || 'Cash on Delivery'}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                        {order.isDelivered ? (
+                          <div>
+                            <span style={styles.badgeBlue}>Delivered</span>
+                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                              {order.deliveredAt?.substring(0, 10)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={styles.badgePending}>Processing</span>
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {!order.isPaid && (
+                            <button
+                              onClick={() => payHandler(orderId)}
+                              style={styles.btnActionBlue}
+                            >
+                              Mark Paid
+                            </button>
+                          )}
+                          {!order.isDelivered && (
+                            <button
+                              onClick={() => deliverHandler(orderId)}
+                              style={styles.btnActionRed}
+                            >
+                              Dispatch
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                    No orders placed yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modern In-App Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        confirmColor={confirmConfig.confirmColor}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };
 
-// --- STYLING ---
 const styles = {
-  tableCard: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--shadow)', border: '1px solid var(--border-color)' },
-  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
-  theadRow: { background: 'var(--bg-subtle)', borderBottom: '2px solid var(--border-color)' },
-  th: { padding: '20px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' },
-  tr: { borderBottom: '1px solid #f1f5f9' },
-   td: { padding: '20px', fontSize: '14px', color: 'var(--text-main)', verticalAlign: 'middle' },
-    statusGroup: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start' },
-  
-
-  actionCell: { display: 'flex', gap: '8px', alignItems: 'center' },
-  buttonSlot: { width: '90px', display: 'flex', justifyContent: 'center' }, // Keeps buttons aligned in columns
-
- btnBlue: { 
-    width: '100%', padding: '8px 0', fontSize: '11px', fontWeight: '600',
-    background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' 
+  statPill: {
+    background: '#ffffff',
+    border: '1px solid #e2e8f0',
+    borderRadius: '10px',
+    padding: '8px 16px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
   },
-
-  btnRed: { 
-    width: '100%', padding: '8px 0', fontSize: '11px', fontWeight: '600',
-    background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' 
+  th: {
+    padding: '14px 16px',
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#475569',
+    letterSpacing: '0.5px',
   },
-
-  badgeSuccess: { background: '#dcfce7', color: '#15803d', padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' },
-  badgeDanger: { background: '#fee2e2', color: '#b91c1c', padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' },
-  badgePending: { background: '#fef3c7', color: '#92400e', padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' },
-  btnActionSmall: { 
-    padding: '6px 12px', 
-    fontSize: '12px', 
-    background: '#3b82f6', 
-    color: '#fff', 
-    border: 'none', 
-    borderRadius: '4px', 
+  td: {
+    padding: '14px 16px',
+    fontSize: '14px',
+    verticalAlign: 'middle',
+  },
+  badgeSuccess: {
+    background: '#dcfce7',
+    color: '#166534',
+    padding: '4px 8px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '700',
+    display: 'inline-block',
+  },
+  badgeDanger: {
+    background: '#fee2e2',
+    color: '#991b1b',
+    padding: '4px 8px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '700',
+    display: 'inline-block',
+  },
+  badgeBlue: {
+    background: '#dbeafe',
+    color: '#1e40af',
+    padding: '4px 8px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '700',
+    display: 'inline-block',
+  },
+  badgePending: {
+    background: '#fef3c7',
+    color: '#92400e',
+    padding: '4px 8px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '700',
+    display: 'inline-block',
+  },
+  btnActionBlue: {
+    background: '#3b82f6',
+    color: '#fff',
+    border: 'none',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '600',
     cursor: 'pointer',
-    fontWeight: '600'
   },
-  statusContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center', // Centers the badge and date
-    justifyContent: 'center',
-    height: '45px', 
+  btnActionRed: {
+    background: '#e94560',
+    color: '#fff',
+    border: 'none',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
-
-  statusCell: { 
-    display: 'flex', 
-    flexDirection: 'column', 
-    justifyContent: 'center', // Keeps badges centered vertically
-    alignItems: 'flex-start', 
-    minHeight: '50px' // Ensures row height stays the same with or without a date
-  },
-  dateLabel: { 
-    fontSize: '10px', 
-    color: '#aaa', 
-    marginTop: '2px',
-    display: 'block',
-    lineHeight: '1'
-  },
-  relativeContainer: {
-    position: 'relative',
-    display: 'flex',
-    flexDirection: 'column'
-  }
 };
 
 export default AdminOrdersPage;

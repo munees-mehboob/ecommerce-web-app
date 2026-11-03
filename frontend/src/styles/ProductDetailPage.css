@@ -15,7 +15,7 @@
   cursor: pointer;
 }
 .breadcrumb span:hover {
-  color: #6366f1;
+  color: #e94560;
 }
 .breadcrumb .current {
   color: #333;
@@ -62,7 +62,7 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  background: #6366f1;
+  background: #e94560;
   color: #fff;
   padding: 4px 12px;
   border-radius: 20px;
@@ -96,7 +96,7 @@
 .detail-price {
   font-size: 2rem;
   font-weight: 800;
-  color: #6366f1;
+  color: #e94560;
 }
 .detail-stock {
   font-size: 0.95rem;
@@ -143,7 +143,7 @@
   flex-wrap: wrap;
 }
 .btn-cart {
-  background: #6366f1;
+  background: #e94560;
   color: #fff;
   border: none;
   padding: 0.8rem 1.8rem;
@@ -154,13 +154,13 @@
   transition: background 0.2s, transform 0.1s;
   flex: 1;
 }
-.btn-cart:hover:not(:disabled) { background: #4f46e5; transform: translateY(-1px); }
+.btn-cart:hover:not(:disabled) { background: #c73652; transform: translateY(-1px); }
 .btn-cart:disabled { background: #ccc; cursor: not-allowed; }
 
 .btn-wishlist {
   background: #fff;
-  color: #6366f1;
-  border: 2px solid #6366f1;
+  color: #e94560;
+  border: 2px solid #e94560;
   padding: 0.8rem 1.8rem;
   border-radius: 10px;
   font-size: 1rem;
@@ -168,7 +168,7 @@
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-wishlist:hover { background: #6366f1; color: #fff; }
+.btn-wishlist:hover { background: #e94560; color: #fff; }
 
 /* Meta */
 .detail-meta {
@@ -202,8 +202,8 @@
   transition: all 0.2s;
   text-transform: capitalize;
 }
-.tab-btn.active { color: #6366f1; border-bottom-color: #6366f1; }
-.tab-btn:hover { color: #6366f1; }
+.tab-btn.active { color: #e94560; border-bottom-color: #e94560; }
+.tab-btn:hover { color: #e94560; }
 
 .description-text {
   font-size: 1rem;
@@ -257,9 +257,9 @@
 .detail-error button {
   margin-top: 1rem;
   padding: 0.6rem 1.2rem;
-  border: 1px solid #6366f1;
+  border: 1px solid #e94560;
   background: #fff;
-  color: #6366f1;
+  color: #e94560;
   border-radius: 8px;
   cursor: pointer;
 }

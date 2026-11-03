@@ -1,18 +1,15 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-const API = 'http://localhost:5000/api/auth';
+import api from '../utils/api';
 
 const userFromStorage = localStorage.getItem('userInfo')
   ? JSON.parse(localStorage.getItem('userInfo'))
   : null;
 
-
 export const registerUser = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      const { data } = await axios.post(`${API}/register`, userData);
+      const { data } = await api.post('/auth/register', userData);
       localStorage.setItem('userInfo', JSON.stringify(data));
       return data;
     } catch (error) {
@@ -21,12 +18,11 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (userData, { rejectWithValue }) => {
     try {
-      const { data } = await axios.post(`${API}/login`, userData);
+      const { data } = await api.post('/auth/login', userData);
       localStorage.setItem('userInfo', JSON.stringify(data));
       return data;
     } catch (error) {
@@ -51,10 +47,13 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    setCredentials: (state, action) => {
+      state.userInfo = action.payload;
+      localStorage.setItem('userInfo', JSON.stringify(action.payload));
+    },
   },
   extraReducers: (builder) => {
     builder
-    
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -67,7 +66,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -83,5 +81,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, setCredentials } = authSlice.actions;
 export default authSlice.reducer;

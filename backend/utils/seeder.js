@@ -1,192 +1,153 @@
 require('dotenv').config();
-const { sequelize } = require('../config/db'); 
-const Product = require('../models/Product');
+const bcrypt = require('bcryptjs');
+const { connectDB } = require('../config/db');
+const { User, Product, Order } = require('../models/index');
 
-const products = [
-  {
-    title: 'Wireless Headphones',
-    description: 'Premium sound quality with noise cancellation',
-    category: 'Electronics',
-    price: 7999,
-    discount: 20,
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop',
-    stock: 20,
-   
-    numReviews: 128,
-    isNewArrival: true,
-  },
-  {
-    title: 'Running Shoes',
-    description: 'Lightweight and durable for all terrains',
-    category: 'Footwear',
-    price: 5999,
-    discount: 15,
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=300&fit=crop',
-    stock: 15,
-  
-    numReviews: 89,
-    isNewArrival: true,
-  },
-  {
-    title: 'Coffee Mug',
-    description: 'Ceramic mug keeps coffee hot for hours',
-    category: 'Kitchen',
-    price: 1499,
-    discount: 0,
-    image: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&h=300&fit=crop',
-    stock: 50,
-    // rating: 4.8,
-    numReviews: 214,
-    isNewArrival: false,
-  },
-  {
-    title: 'Backpack',
-    description: 'Spacious 30L waterproof backpack',
-    category: 'Accessories',
-    price: 4999,
-    discount: 10,
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop',
-    stock: 30,
-    
-    numReviews: 76,
-    isNewArrival: false,
-  },
-  {
-    title: 'Smart Watch',
-    description: 'Fitness tracking with heart rate monitor',
-    category: 'Electronics',
-    price: 12999,
-    discount: 25,
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=300&fit=crop',
-    stock: 10,
-   
-    numReviews: 302,
-    isNewArrival: true,
-  },
-  {
-    title: 'Yoga Mat',
-    description: 'Non-slip premium yoga mat 6mm thick',
-    category: 'Fitness',
-    price: 2999,
-    discount: 0,
-    image: 'https://images.unsplash.com/photo-1592432678016-e910b452f9a2?w=500&auto=format&fit=crop',
-    stock: 25,
-    
-    numReviews: 91,
-    isNewArrival: true,
-  },
-  {
-    title: 'Sunglasses',
-    description: 'UV400 polarized lenses stylish design',
-    category: 'Accessories',
-    price: 3499,
-    discount: 30,
-    image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=300&fit=crop',
-    stock: 40,
-
-    numReviews: 45,
-    isNewArrival: false,
-  },
-  {
-    title: 'Bluetooth Speaker',
-    description: '360 sound with 12hr battery life',
-    category: 'Electronics',
-    price: 6999,
-    discount: 18,
-    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400&h=300&fit=crop',
-    stock: 18,
-    
-    numReviews: 167,
-    isNewArrival: true,
-  },
-  {
-    title: 'Leather Handbag',
-    description: 'Genuine leather with multiple compartments',
-    category: 'Fashion',
-    price: 8999,
-    discount: 20,
-    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=300&fit=crop',
-    stock: 12,
-   
-    numReviews: 98,
-    isNewArrival: true,
-  },
-  {
-    title: 'Desk Lamp LED',
-    description: 'Adjustable brightness eye-care LED lamp',
-    category: 'Home',
-    price: 2499,
-    discount: 0,
-    image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=400&h=300&fit=crop',
-    stock: 35,
-
-    numReviews: 63,
-    isNewArrival: false,
-  },
-  {
-    title: 'Race Cycle',
-    description: 'Professional lightweight carbon frame race bicycle',
-    category: 'Sports',
-    price: 89999,
-    discount: 10,
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
-    stock: 5,
-
-    numReviews: 34,
-    isNewArrival: true,
-  },
-  {
-    title: 'Face Moisturizer',
-    description: 'Hydrating daily moisturizer with SPF 30',
-    category: 'Beauty',
-    price: 1899,
-    discount: 5,
-    image: 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=400&h=300&fit=crop',
-    stock: 60,
-
-    numReviews: 187,
-    isNewArrival: false,
-  },
-   {
-    title: 'Fashion clothes and all',
-    description: 'modern type clothes ',
-    category: 'fashion',
-    price: 5000,
-    discount: 10,
-    image: 'https://images.unsplash.com/photo-1608748010899-18f300247112?w=500&auto=format&fit=crop',
-    stock: 50,
-
-    numReviews: 190,
-    isNewArrival: false,
-  },
-];
-const seed = async () => {
+const seedData = async () => {
   try {
-    await sequelize.authenticate();
-    console.log('Connected to MySQL...');
+    await connectDB();
 
-    // 1. Disable foreign key checks so we can drop the table
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-    console.log('Foreign key checks disabled.');
+    console.log('🧹 Clearing old MongoDB collections...');
+    await User.deleteMany();
+    await Product.deleteMany();
+    await Order.deleteMany();
 
-    // 2. Force sync (Wipe and recreate table)
-    await sequelize.sync({ force: true });
-    console.log('Table recreated.');
+    console.log('👤 Creating only Admin user...');
+    const adminName = process.env.ADMIN_NAME || 'Admin User';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@shopnow.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123456';
 
-    // 3. Bulk insert the new products
-    await Product.bulkCreate(products);
+    const salt = await bcrypt.genSalt(10);
+    const adminHashedPassword = await bcrypt.hash(adminPassword, salt);
 
-    // 4. Re-enable foreign key checks
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
-    console.log('✅ Products seeded successfully with REAL images!');
+    // Only Admin Account is created
+    const adminUser = await User.create({
+      name: adminName,
+      email: adminEmail,
+      password: adminHashedPassword,
+      isAdmin: true,
+    });
 
-    process.exit();
+    console.log(`✅ Admin created: ${adminUser.email}`);
+
+    console.log('📦 Seeding products with numeric discounts...');
+    const products = [
+      {
+        title: 'Sony WH-1000XM5 Wireless Headphones',
+        description: 'Industry-leading noise canceling with two processors and 8 microphones for exceptional sound quality.',
+        category: 'Electronics',
+        price: 8499,
+        discount: 15,
+        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80',
+        stock: 25,
+        isNewArrival: true,
+        rating: 4.8,
+        numReviews: 0,
+        reviews: [],
+      },
+      {
+        title: 'Nike Air Zoom Pegasus 40 Running Shoes',
+        description: 'A responsive ride for everyday runs with tuned support and targeted breathability.',
+        category: 'Fashion',
+        price: 6499,
+        discount: 20,
+        image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
+        stock: 30,
+        isNewArrival: true,
+        rating: 4.7,
+        numReviews: 0,
+        reviews: [],
+      },
+      {
+        title: 'Apple Watch Series 9 GPS 45mm',
+        description: 'Smarter, brighter, and mightier with the S9 SiP chip, double tap gesture, and health insights.',
+        category: 'Electronics',
+        price: 14999,
+        discount: 10,
+        image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80',
+        stock: 18,
+        isNewArrival: true,
+        rating: 4.9,
+        numReviews: 0,
+        reviews: [],
+      },
+      {
+        title: 'Ceramic Pour-Over Coffee Dripper Set',
+        description: 'Artisan hand-crafted ceramic dripper that maintains water temperature for rich pour-over extraction.',
+        category: 'Home',
+        price: 1899,
+        discount: 0,
+        image: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=600&auto=format&fit=crop&q=80',
+        stock: 45,
+        isNewArrival: false,
+        rating: 4.5,
+        numReviews: 0,
+        reviews: [],
+      },
+      {
+        title: 'Everyday Travel & Commuter 30L Backpack',
+        description: 'Weatherproof exterior, padded laptop sleeve up to 16", and ergonomic breathable back panel.',
+        category: 'Accessories',
+        price: 4499,
+        discount: 25,
+        image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&auto=format&fit=crop&q=80',
+        stock: 35,
+        isNewArrival: false,
+        rating: 4.6,
+        numReviews: 0,
+        reviews: [],
+      },
+      {
+        title: 'Minimalist Mechanical Keyboard RGB',
+        description: 'Hot-swappable tactile mechanical switches with custom PBT double-shot keycaps and wireless connectivity.',
+        category: 'Electronics',
+        price: 5299,
+        discount: 12,
+        image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&auto=format&fit=crop&q=80',
+        stock: 20,
+        isNewArrival: true,
+        rating: 4.9,
+        numReviews: 0,
+        reviews: [],
+      },
+      {
+        title: 'Organic Vitamin C Glow Face Serum',
+        description: 'Potent 20% Vitamin C serum with Hyaluronic Acid and Ferulic Acid for radiant skin tone.',
+        category: 'Beauty',
+        price: 2199,
+        discount: 18,
+        image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&auto=format&fit=crop&q=80',
+        stock: 50,
+        isNewArrival: false,
+        rating: 4.7,
+        numReviews: 0,
+        reviews: [],
+      },
+      {
+        title: 'Pro Training Non-Slip Yoga Mat',
+        description: 'High-density eco-friendly TPE foam with laser-engraved alignment guides for workouts.',
+        category: 'Sports',
+        price: 2799,
+        discount: 10,
+        image: 'https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=600&auto=format&fit=crop&q=80',
+        stock: 40,
+        isNewArrival: false,
+        rating: 4.4,
+        numReviews: 0,
+        reviews: [],
+      },
+    ];
+
+    const createdProducts = await Product.insertMany(products);
+    console.log(`✅ ${createdProducts.length} products seeded successfully!`);
+    console.log('✅ Users collection has ONLY the Admin account. Ready for customer registrations.');
+
+    console.log('\n🎉 SEEDING COMPLETE! You can now log into MongoDB Compass and test the app.');
+    process.exit(0);
   } catch (error) {
-    console.error('❌ Seeder error:', error);
-    // Even if it fails, try to re-enable checks
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    console.error('❌ Seeder failed:', error);
     process.exit(1);
   }
 };
 
-seed();
+seedData();

@@ -1,28 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  getProducts, 
-  getProductById, 
-  createProduct, 
-  deleteProduct, 
+const {
+  getProducts,
+  getProductById,
+  createProduct,
+  deleteProduct,
   updateProduct,
-  createReview
+  createReview,
+  deleteReview,
 } = require('../controllers/productController');
-
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-// --- ADMIN ONLY DATA ACCESS ---
-// Added adminOnly here so regular users cannot fetch the product list or details
-router.get('/',  getProducts);
+// Public product routes
+router.get('/', getProducts);
 router.get('/:id', getProductById);
 
-// --- ADMIN ACTIONS ---
+// Admin product routes
 router.post('/', protect, adminOnly, createProduct);
-router.put('/:id', protect, adminOnly, updateProduct); 
-router.delete('/:id', protect, adminOnly, deleteProduct); 
+router.put('/:id', protect, adminOnly, updateProduct);
+router.delete('/:id', protect, adminOnly, deleteProduct);
 
-// --- USER ACTIONS ---
-// Usually, reviews are for regular users, so we only use protect here
+// Review routes
 router.post('/:id/reviews', protect, createReview);
+router.delete('/:id/reviews/:reviewId', protect, deleteReview);
 
 module.exports = router;
