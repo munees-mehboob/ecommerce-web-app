@@ -88,3 +88,4 @@ The frontend will run at `http://localhost:5173` and communicate with the backen
 
 ## 📜 License
 This project is open-source and available under the [MIT License](LICENSE).
+
